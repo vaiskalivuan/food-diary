@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>飲食日記</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="飲食日記">
+<meta name="theme-color" content="#FF8C42">
+<style>
+:root {
+  --primary: #FF8C42; --primary-light: #FFF0E6;
+  --teal: #0ADAB2; --teal-light: #E6FDF8;
+  --pink: #FF6B8A; --pink-light: #FFE8EE;
+  --bg: #f9f6f3; --card: #fff;
+  --text: #2d2d2d; --muted: #999; --border: #efe8e0;
+  --radius: 16px; --shadow: 0 2px 12px rgba(0,0,0,0.08); --nav-h: 64px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: var(--nav-h); }
+
+/* Nav */
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--border); display: flex; z-index: 200; padding-bottom: env(safe-area-inset-bottom); }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 0 8px; cursor: pointer; gap: 3px; background: none; border: none; color: var(--muted); font-size: 10px; font-family: inherit; }
+.nav-icon { font-size: 22px; line-height: 1; transition: transform 0.15s; }
+.nav-item.active { color: var(--primary); }
+.nav-item.active .nav-icon { transform: scale(1.1); }
+
+/* Pages */
+.tab-page { display: none; max-width: 480px; margin: auto; padding: 16px 16px 8px; }
+.tab-page.active { display: block; }
+.page-header { padding: 20px 0 14px; }
+.page-header h1 { font-size: 24px; font-weight: 700; }
+.page-header p { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.section-label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 10px; }
+
+/* Stats row */
+.stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.stat-card { background: var(--card); border-radius: var(--radius); padding: 14px 8px; text-align: center; box-shadow: var(--shadow); }
+.stat-card .snum { font-size: 22px; font-weight: 700; color: var(--primary); }
+.stat-card .slabel { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* Water tracker */
+.water-card { background: var(--card); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 14px; }
+.water-left { flex: 1; }
+.water-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.water-glasses { display: flex; gap: 5px; flex-wrap: wrap; }
+.glass { width: 22px; height: 22px; border-radius: 5px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.15s; cursor: pointer; }
+.glass.filled { background: var(--teal); border-color: var(--teal); }
+.glass.filled::after { content: '💧'; font-size: 11px; }
+.glass:not(.filled)::after { content: '○'; color: var(--border); font-size: 13px; }
+.water-btns { display: flex; flex-direction: column; gap: 6px; }
+.wbtn { width: 36px; height: 36px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--bg); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.wbtn.plus { border-color: var(--teal); color: var(--teal); background: var(--teal-light); }
+.water-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* Period banner */
+.period-row { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.period-btn { display: flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 20px; border: 2px solid var(--border); background: var(--card); font-size: 13px; color: var(--muted); cursor: pointer; font-family: inherit; transition: all 0.15s; box-shadow: var(--shadow); }
+.period-btn.on { border-color: var(--pink); background: var(--pink-light); color: var(--pink); font-weight: 700; }
+
+/* Entry Form */
+.entry-card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.meal-tabs { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.meal-tabs::-webkit-scrollbar { display: none; }
+.meal-tab { flex-shrink: 0; padding: 7px 12px; border-radius: 20px; border: 2px solid var(--border); background: white; cursor: pointer; font-size: 13px; color: var(--muted); white-space: nowrap; font-family: inherit; }
+.meal-tab.on { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 700; }
+
+.food-input { width: 100%; padding: 11px 13px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; margin-bottom: 10px; outline: none; background: var(--bg); color: var(--text); font-family: inherit; transition: border 0.15s; }
+.food-input:focus { border-color: var(--primary); background: white; }
+
+/* Detail toggle */
+.detail-toggle { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); cursor: pointer; margin-bottom: 0; padding: 6px 0; background: none; border: none; font-family: inherit; }
+.detail-toggle .arrow { transition: transform 0.2s; display: inline-block; }
+.detail-toggle.open .arrow { transform: rotate(90deg); }
+.detail-section { display: none; padding-top: 10px; }
+.detail-section.open { display: block; }
+
+.detail-label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 7px; }
+.satiety-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.sat-btn { flex: 1; padding: 8px 4px; border-radius: 10px; border: 2px solid var(--border); background: var(--bg); cursor: pointer; text-align: center; font-size: 18px; transition: all 0.15s; }
+.sat-btn .sat-label { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
+.sat-btn.on { border-color: var(--primary); background: var(--primary-light); }
+
+.motive-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.motive-btn { padding: 6px 12px; border-radius: 20px; border: 2px solid var(--border); background: var(--bg); cursor: pointer; font-size: 12px; color: var(--muted); font-family: inherit; transition: all 0.15s; }
+.motive-btn.on { border-color: var(--teal); background: var(--teal-light); color: #007A63; font-weight: 700; }
+
+.add-btn { width: 100%; padding: 13px; background: var(--primary); color: white; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(255,140,66,0.3); margin-top: 12px; transition: opacity 0.15s; }
+.add-btn:active { opacity: 0.85; }
+
+/* Entry items */
+.entry-item { background: var(--card); border-radius: 12px; padding: 12px 14px; margin-bottom: 7px; box-shadow: var(--shadow); display: flex; align-items: flex-start; gap: 10px; }
+.e-icon { font-size: 26px; flex-shrink: 0; margin-top: 2px; }
+.e-content { flex: 1; min-width: 0; }
+.e-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 3px; }
+.e-tag { font-size: 10px; font-weight: 700; color: var(--primary); background: var(--primary-light); padding: 2px 8px; border-radius: 10px; }
+.e-period-tag { font-size: 10px; font-weight: 700; color: var(--pink); background: var(--pink-light); padding: 2px 8px; border-radius: 10px; }
+.e-food { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-meta { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+.e-sat { font-size: 13px; }
+.e-motive { font-size: 11px; color: #007A63; background: var(--teal-light); padding: 2px 7px; border-radius: 8px; }
+.e-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.e-time { font-size: 11px; color: #CCC; }
+.e-del { background: none; border: none; color: #DDD; cursor: pointer; font-size: 20px; line-height: 1; padding: 0; }
+.e-del:active { color: #FF6B6B; }
+
+.empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+.empty-state .ei { font-size: 44px; margin-bottom: 10px; }
+.empty-state p { font-size: 14px; line-height: 1.6; }
+
+/* Calendar */
+.cal-card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); margin-bottom: 14px; }
+.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.cal-month { font-size: 16px; font-weight: 700; }
+.cal-nav { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text); padding: 4px 10px; font-family: inherit; }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+.cal-dlabel { text-align: center; font-size: 11px; color: var(--muted); padding: 3px 0 6px; font-weight: 600; }
+.cal-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 500; gap: 2px; position: relative; }
+.cal-day.empty { cursor: default; }
+.cal-day.has-entry { background: var(--primary-light); color: var(--primary); font-weight: 700; }
+.cal-day.is-period { background: var(--pink-light) !important; color: var(--pink) !important; }
+.cal-day.today { box-shadow: 0 0 0 2px var(--primary); }
+.cal-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); }
+.cal-day.is-period .cal-dot { background: var(--pink); }
+
+.hist-card { background: var(--card); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); margin-bottom: 8px; cursor: pointer; }
+.hc-head { display: flex; align-items: center; justify-content: space-between; }
+.hc-date { font-size: 12px; color: var(--muted); }
+.hc-period-badge { font-size: 11px; color: var(--pink); }
+.hc-count { font-size: 14px; font-weight: 700; margin-top: 2px; }
+.hc-meals { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.hc-tag { font-size: 11px; background: var(--bg); border-radius: 6px; padding: 3px 8px; }
+
+/* Stats */
+.stats-section { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); margin-bottom: 12px; }
+.ss-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+.week-row { display: flex; gap: 4px; }
+.week-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.wd-dot { width: 30px; height: 30px; border-radius: 50%; background: var(--bg); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.2s; }
+.wd-dot.has { background: var(--primary); border-color: var(--primary); color: white; }
+.wd-dot.is-today { border-color: var(--primary); }
+.wd-dot.period { background: var(--pink-light) !important; border-color: var(--pink) !important; }
+.wd-label { font-size: 10px; color: var(--muted); }
+
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.bar-lbl { font-size: 12px; color: var(--muted); width: 44px; text-align: right; flex-shrink: 0; }
+.bar-track { flex: 1; background: var(--bg); border-radius: 100px; height: 8px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 100px; background: var(--primary); }
+.bar-val { font-size: 12px; font-weight: 600; width: 20px; text-align: right; }
+
+.motive-stats { display: flex; flex-wrap: wrap; gap: 8px; }
+.motive-stat { background: var(--bg); border-radius: 10px; padding: 8px 12px; text-align: center; flex: 1; min-width: 70px; }
+.ms-num { font-size: 20px; font-weight: 700; color: var(--teal); }
+.ms-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.streak-num { font-size: 36px; font-weight: 700; color: var(--primary); }
+.streak-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* Settings */
+.settings-group { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 12px; }
+.settings-row { display: flex; align-items: center; padding: 14px 16px; gap: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.settings-row:last-child { border-bottom: none; }
+.sr-icon { font-size: 20px; width: 28px; text-align: center; }
+.sr-info { flex: 1; }
+.sr-title { font-size: 14px; font-weight: 600; }
+.sr-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.sr-right { color: var(--muted); font-size: 16px; }
+.settings-note { padding: 8px 4px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 300; }
+.modal-overlay.open { display: flex; align-items: flex-end; justify-content: center; }
+.modal-sheet { background: var(--card); border-radius: 24px 24px 0 0; width: 100%; max-width: 480px; padding: 20px 20px calc(40px + env(safe-area-inset-bottom)); max-height: 75vh; overflow-y: auto; }
+.modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; }
+.modal-period-note { font-size: 12px; color: var(--pink); background: var(--pink-light); padding: 6px 10px; border-radius: 8px; margin-bottom: 12px; }
+.modal-entry { background: var(--bg); border-radius: 10px; padding: 11px 13px; margin-bottom: 8px; }
+.me-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.me-icon { font-size: 20px; }
+.me-meal { font-size: 11px; font-weight: 700; color: var(--primary); }
+.me-food { font-size: 14px; padding-left: 28px; }
+.me-details { display: flex; align-items: center; gap: 8px; margin-top: 5px; padding-left: 28px; }
+.me-sat { font-size: 14px; }
+.me-motive { font-size: 11px; color: #007A63; background: var(--teal-light); padding: 2px 7px; border-radius: 6px; }
+.me-time { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+/* Toast */
+.toast { position: fixed; bottom: calc(var(--nav-h) + 12px); left: 50%; transform: translateX(-50%) translateY(10px); background: rgba(30,30,30,0.85); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; opacity: 0; transition: all 0.25s; z-index: 500; white-space: nowrap; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- TODAY -->
+<div id="tab-today" class="tab-page active">
+  <div class="page-header">
+    <h1 id="greeting">嗨 Vais 🥗</h1>
+    <p id="today-label"></p>
+  </div>
+
+  <div id="stats-row" class="stats-row"></div>
+
+  <!-- Water tracker -->
+  <div class="water-card">
+    <div class="water-left">
+      <div class="water-title">💧 今日喝水</div>
+      <div class="water-glasses" id="water-glasses"></div>
+      <div class="water-sub" id="water-sub">目標 8 杯（約 2000ml）</div>
+    </div>
+    <div class="water-btns">
+      <button class="wbtn plus" onclick="addWater()">＋</button>
+      <button class="wbtn" onclick="removeWater()">－</button>
+    </div>
+  </div>
+
+  <!-- Period marker -->
+  <div class="period-row">
+    <button class="period-btn" id="period-btn" onclick="togglePeriod()">
+      🩸 <span id="period-label">生理期前後</span>
+    </button>
+  </div>
+
+  <!-- Entry form -->
+  <div class="entry-card">
+    <div class="meal-tabs">
+      <button class="meal-tab on" data-meal="早餐" data-icon="🌅" onclick="selMeal(this)">🌅 早餐</button>
+      <button class="meal-tab" data-meal="午餐" data-icon="☀️" onclick="selMeal(this)">☀️ 午餐</button>
+      <button class="meal-tab" data-meal="晚餐" data-icon="🌙" onclick="selMeal(this)">🌙 晚餐</button>
+      <button class="meal-tab" data-meal="點心" data-icon="🍡" onclick="selMeal(this)">🍡 點心</button>
+      <button class="meal-tab" data-meal="飲料" data-icon="🧋" onclick="selMeal(this)">🧋 飲料</button>
+      <button class="meal-tab" data-meal="高蛋白" data-icon="💪" onclick="selMeal(this)">💪 高蛋白</button>
+    </div>
+    <input class="food-input" id="foodInput" type="text" placeholder="今天吃了什麼？" onkeydown="if(event.key==='Enter')addEntry()">
+
+    <!-- Optional details -->
+    <button class="detail-toggle" id="detail-toggle" onclick="toggleDetail()">
+      <span class="arrow">›</span> 加更多細節（可跳過）
+    </button>
+    <div class="detail-section" id="detail-section">
+      <div class="detail-label">吃完飽足感</div>
+      <div class="satiety-row">
+        <button class="sat-btn" data-sat="1" onclick="selSat(this)">😐<span class="sat-label">還好</span></button>
+        <button class="sat-btn" data-sat="2" onclick="selSat(this)">🙂<span class="sat-label">有點飽</span></button>
+        <button class="sat-btn" data-sat="3" onclick="selSat(this)">😊<span class="sat-label">剛剛好</span></button>
+        <button class="sat-btn" data-sat="4" onclick="selSat(this)">😄<span class="sat-label">很飽</span></button>
+        <button class="sat-btn" data-sat="5" onclick="selSat(this)">🤤<span class="sat-label">超飽</span></button>
+      </div>
+      <div class="detail-label">為什麼吃</div>
+      <div class="motive-row">
+        <button class="motive-btn" data-motive="餓了" onclick="selMotive(this)">🍽️ 餓了</button>
+        <button class="motive-btn" data-motive="嘴饞" onclick="selMotive(this)">😋 嘴饞</button>
+        <button class="motive-btn" data-motive="社交" onclick="selMotive(this)">👥 社交</button>
+        <button class="motive-btn" data-motive="習慣" onclick="selMotive(this)">🔄 習慣</button>
+        <button class="motive-btn" data-motive="壓力" onclick="selMotive(this)">😮‍💨 壓力</button>
+      </div>
+    </div>
+
+    <button class="add-btn" onclick="addEntry()">記錄下來 ✓</button>
+  </div>
+
+  <div class="section-label">今日記錄</div>
+  <div id="today-list"></div>
+</div>
+
+<!-- HISTORY -->
+<div id="tab-history" class="tab-page">
+  <div class="page-header"><h1>歷史記錄</h1></div>
+  <div class="cal-card">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calNav(-1)">‹</button>
+      <div class="cal-month" id="cal-month-label"></div>
+      <button class="cal-nav" onclick="calNav(1)">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+  <div id="history-list"></div>
+</div>
+
+<!-- STATS -->
+<div id="tab-stats" class="tab-page">
+  <div class="page-header"><h1>本週狀況</h1></div>
+  <div id="stats-content"></div>
+</div>
+
+<!-- SETTINGS -->
+<div id="tab-settings" class="tab-page">
+  <div class="page-header"><h1>設定</h1></div>
+  <div class="settings-group">
+    <div class="settings-row" onclick="exportData()">
+      <div class="sr-icon">📋</div>
+      <div class="sr-info"><div class="sr-title">匯出日記</div><div class="sr-sub">複製所有記錄，貼給 Claude 存檔</div></div>
+      <div class="sr-right">›</div>
+    </div>
+    <div class="settings-row" onclick="clearData()">
+      <div class="sr-icon">🗑️</div>
+      <div class="sr-info"><div class="sr-title">清除所有資料</div><div class="sr-sub" style="color:#FF6B6B">刪除全部記錄，不可復原</div></div>
+      <div class="sr-right">›</div>
+    </div>
+  </div>
+  <div class="settings-group">
+    <div class="settings-row">
+      <div class="sr-icon">🔗</div>
+      <div class="sr-info"><div class="sr-title">Notion 同步</div><div class="sr-sub">尚未設定（coming soon）</div></div>
+      <div class="sr-right">›</div>
+    </div>
+  </div>
+  <div class="settings-note">
+    💡 資料存在瀏覽器本地，不會上傳雲端。<br>
+    記得定期匯出給 Claude 備份 📁<br><br>
+    🩸 生理期標記：點首頁右上角的按鈕，標記當天後整個週期都會在日曆上顯示粉色。
+  </div>
+</div>
+
+<!-- Day Modal -->
+<div class="modal-overlay" id="dayModal" onclick="closeModal()">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-period-note" class="modal-period-note" style="display:none">🩸 生理期期間</div>
+    <div id="modal-entries"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="switchTab('today',this)">
+    <span class="nav-icon">🥗</span>今天
+  </button>
+  <button class="nav-item" onclick="switchTab('history',this)">
+    <span class="nav-icon">📅</span>歷史
+  </button>
+  <button class="nav-item" onclick="switchTab('stats',this)">
+    <span class="nav-icon">📊</span>統計
+  </button>
+  <button class="nav-item" onclick="switchTab('settings',this)">
+    <span class="nav-icon">⚙️</span>設定
+  </button>
+</nav>
+
+<script>
+// ── Storage Keys ──
+const KEY = 'vais-food-diary-v1';
+const WATER_KEY = 'vais-water-v1';
+const PERIOD_KEY = 'vais-period-v1';
+
+// ── State ──
+let entries = [];
+let waterLog = {};   // { 'YYYY/MM/DD': n }
+let periodDays = []; // ['YYYY/MM/DD', ...]
+let curMeal = '早餐', curIcon = '🌅';
+let curSat = null, curMotive = null;
+let detailOpen = false;
+let calY, calM;
+
+// ── Persist ──
+function load() {
+  try { entries = JSON.parse(localStorage.getItem(KEY)) || []; } catch(e) { entries = []; }
+  try { waterLog = JSON.parse(localStorage.getItem(WATER_KEY)) || {}; } catch(e) { waterLog = {}; }
+  try { periodDays = JSON.parse(localStorage.getItem(PERIOD_KEY)) || []; } catch(e) { periodDays = []; }
+}
+function save() { localStorage.setItem(KEY, JSON.stringify(entries)); }
+function saveWater() { localStorage.setItem(WATER_KEY, JSON.stringify(waterLog)); }
+function savePeriod() { localStorage.setItem(PERIOD_KEY, JSON.stringify(periodDays)); }
+load();
+
+// ── Utils ──
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}`;
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+function nowTime() { const d=new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function fmtDate(s) {
+  const t = today();
+  if (s===t) return '今天';
+  const [y,m,d]=s.split('/');
+  const diff=Math.round((new Date(...t.split('/').map((v,i)=>i===1?v-1:+v))-new Date(+y,+m-1,+d))/86400000);
+  if(diff===1) return '昨天';
+  if(diff===2) return '前天';
+  return `${+m}月${+d}日`;
+}
+function toast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2200);
+}
+const SAT_EMOJI = {1:'😐',2:'🙂',3:'😊',4:'😄',5:'🤤'};
+
+// ── Greeting ──
+(function(){
+  const h=new Date().getHours();
+  const g=h<11?'早安':h<14?'午安':h<18?'嗨':'晚安';
+  document.getElementById('greeting').textContent=`${g} Vais 🥗`;
+  const d=new Date(), days=['日','一','二','三','四','五','六'];
+  document.getElementById('today-label').textContent=`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 週${days[d.getDay()]}`;
+})();
+
+// ── Tab Switch ──
+function switchTab(name,btn) {
+  document.querySelectorAll('.tab-page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='today') renderToday();
+  if(name==='history'){initCal();renderHistoryList();}
+  if(name==='stats') renderStats();
+}
+
+// ── Meal / Sat / Motive ──
+function selMeal(btn) {
+  document.querySelectorAll('.meal-tab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on'); curMeal=btn.dataset.meal; curIcon=btn.dataset.icon;
+}
+function selSat(btn) {
+  document.querySelectorAll('.sat-btn').forEach(b=>b.classList.remove('on'));
+  if(curSat===+btn.dataset.sat){curSat=null;} else {btn.classList.add('on');curSat=+btn.dataset.sat;}
+}
+function selMotive(btn) {
+  document.querySelectorAll('.motive-btn').forEach(b=>b.classList.remove('on'));
+  if(curMotive===btn.dataset.motive){curMotive=null;} else {btn.classList.add('on');curMotive=btn.dataset.motive;}
+}
+function toggleDetail() {
+  detailOpen=!detailOpen;
+  document.getElementById('detail-toggle').classList.toggle('open',detailOpen);
+  document.getElementById('detail-section').classList.toggle('open',detailOpen);
+}
+
+// ── Water ──
+function addWater() {
+  const t=today(); waterLog[t]=(waterLog[t]||0)+1; saveWater(); renderWater();
+}
+function removeWater() {
+  const t=today(); if((waterLog[t]||0)>0){waterLog[t]--;saveWater();} renderWater();
+}
+function renderWater() {
+  const n=waterLog[today()]||0, goal=8;
+  let html='';
+  for(let i=0;i<goal;i++) html+=`<div class="glass${i<n?' filled':''}" onclick="${i<n?'removeWater()':'addWater()'}"></div>`;
+  document.getElementById('water-glasses').innerHTML=html;
+  const sub=n===0?'目標 8 杯（約 2000ml）':n<goal?`還差 ${goal-n} 杯 加油！`:'🎉 今天達標了！';
+  document.getElementById('water-sub').textContent=sub;
+}
+
+// ── Period ──
+function togglePeriod() {
+  const t=today();
+  if(periodDays.includes(t)){
+    periodDays=periodDays.filter(d=>d!==t);
+    toast('已取消生理期標記');
+  } else {
+    periodDays.push(t);
+    toast('🩸 已標記生理期');
+  }
+  savePeriod(); updatePeriodBtn();
+}
+function updatePeriodBtn() {
+  const on=periodDays.includes(today());
+  document.getElementById('period-btn').classList.toggle('on',on);
+  document.getElementById('period-label').textContent=on?'生理期中':'生理期前後';
+}
+
+// ── Add Entry ──
+function addEntry() {
+  const inp=document.getElementById('foodInput');
+  const food=inp.value.trim();
+  if(!food){inp.focus();return;}
+  entries.push({
+    id:Date.now(), date:today(), time:nowTime(),
+    meal:curMeal, icon:curIcon, food,
+    satiety:curSat||null, motivation:curMotive||null
+  });
+  save();
+  inp.value='';
+  inp.focus();
+  // Reset optional fields
+  curSat=null; curMotive=null;
+  document.querySelectorAll('.sat-btn,.motive-btn').forEach(b=>b.classList.remove('on'));
+  renderToday();
+  toast('記錄成功 ✓');
+}
+
+// ── Delete ──
+function delEntry(id) {
+  entries=entries.filter(e=>e.id!==id); save(); renderToday(); toast('已刪除');
+}
+
+// ── Render Today ──
+function renderToday() {
+  renderWater();
+  updatePeriodBtn();
+  const t=today();
+  const td=entries.filter(e=>e.date===t).sort((a,b)=>a.time.localeCompare(b.time));
+  const allDays=new Set(entries.map(e=>e.date)).size;
+  document.getElementById('stats-row').innerHTML=`
+    <div class="stat-card"><div class="snum">${td.length}</div><div class="slabel">今日記錄</div></div>
+    <div class="stat-card"><div class="snum">${entries.length}</div><div class="slabel">總筆數</div></div>
+    <div class="stat-card"><div class="snum">${allDays}</div><div class="slabel">記錄天數</div></div>
+  `;
+  const list=document.getElementById('today-list');
+  if(td.length===0){
+    list.innerHTML=`<div class="empty-state"><div class="ei">🍽️</div><p>今天還沒有記錄<br>吃了什麼快記下來！</p></div>`;
+    return;
+  }
+  const isPeriod=periodDays.includes(t);
+  list.innerHTML=td.map(e=>`
+    <div class="entry-item">
+      <div class="e-icon">${e.icon}</div>
+      <div class="e-content">
+        <div class="e-top">
+          <span class="e-tag">${e.meal}</span>
+          ${isPeriod?'<span class="e-period-tag">🩸 生理期</span>':''}
+        </div>
+        <div class="e-food">${e.food}</div>
+        ${(e.satiety||e.motivation)?`<div class="e-meta">
+          ${e.satiety?`<span class="e-sat">${SAT_EMOJI[e.satiety]}</span>`:''}
+          ${e.motivation?`<span class="e-motive">${e.motivation}</span>`:''}
+        </div>`:''}
+      </div>
+      <div class="e-right">
+        <span class="e-time">${e.time}</span>
+        <button class="e-del" onclick="delEntry(${e.id})">×</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Calendar ──
+function initCal() { const d=new Date(); calY=d.getFullYear(); calM=d.getMonth(); renderCal(); }
+function calNav(dir) {
+  calM+=dir;
+  if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;}
+  renderCal(); renderHistoryList();
+}
+function renderCal() {
+  const mns=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  document.getElementById('cal-month-label').textContent=`${calY}年 ${mns[calM]}`;
+  const days=['日','一','二','三','四','五','六'];
+  const first=new Date(calY,calM,1).getDay(), total=new Date(calY,calM+1,0).getDate(), t=today();
+  let html=days.map(d=>`<div class="cal-dlabel">${d}</div>`).join('');
+  for(let i=0;i<first;i++) html+='<div class="cal-day empty"></div>';
+  for(let d=1;d<=total;d++){
+    const ds=`${calY}/${pad(calM+1)}/${pad(d)}`;
+    const has=entries.some(e=>e.date===ds);
+    const isPeriod=periodDays.includes(ds);
+    const isT=ds===t;
+    let cls=[has?'has-entry':'',isPeriod?'is-period':'',isT?'today':''].filter(Boolean).join(' ');
+    html+=`<div class="cal-day ${cls}" onclick="openDay('${ds}')">${d}${has?'<div class="cal-dot"></div>':''}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML=html;
+}
+function renderHistoryList() {
+  const prefix=`${calY}/${pad(calM+1)}/`;
+  const filtered=entries.filter(e=>e.date.startsWith(prefix));
+  const groups=filtered.reduce((g,e)=>{(g[e.date]=g[e.date]||[]).push(e);return g;},{});
+  const dates=Object.keys(groups).sort().reverse();
+  const list=document.getElementById('history-list');
+  if(dates.length===0){list.innerHTML=`<div class="empty-state"><div class="ei">📅</div><p>這個月還沒有記錄</p></div>`;return;}
+  list.innerHTML=dates.map(date=>{
+    const es=groups[date], isPeriod=periodDays.includes(date);
+    const tags=[...new Set(es.map(e=>e.icon+' '+e.meal))];
+    return `<div class="hist-card" onclick="openDay('${date}')">
+      <div class="hc-head">
+        <div>
+          <div class="hc-date">${fmtDate(date)} · ${date}</div>
+          <div class="hc-count">共 ${es.length} 筆記錄${waterLog[date]?` · 💧${waterLog[date]}杯`:''}
+          </div>
+        </div>
+        ${isPeriod?'<div class="hc-period-badge">🩸</div>':''}
+      </div>
+      <div class="hc-meals">${tags.map(t=>`<span class="hc-tag">${t}</span>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Day Modal ──
+function openDay(date) {
+  const es=entries.filter(e=>e.date===date).sort((a,b)=>a.time.localeCompare(b.time));
+  if(es.length===0) return;
+  document.getElementById('modal-title').textContent=`${fmtDate(date)} 的飲食`;
+  const pNote=document.getElementById('modal-period-note');
+  pNote.style.display=periodDays.includes(date)?'block':'none';
+  document.getElementById('modal-entries').innerHTML=es.map(e=>`
+    <div class="modal-entry">
+      <div class="me-top"><span class="me-icon">${e.icon}</span><span class="me-meal">${e.meal} · ${e.time}</span></div>
+      <div class="me-food">${e.food}</div>
+      ${(e.satiety||e.motivation)?`<div class="me-details">
+        ${e.satiety?`<span class="me-sat">${SAT_EMOJI[e.satiety]}</span>`:''}
+        ${e.motivation?`<span class="me-motive">${e.motivation}</span>`:''}
+      </div>`:''}
+    </div>
+  `).join('');
+  document.getElementById('dayModal').classList.add('open');
+}
+function closeModal() { document.getElementById('dayModal').classList.remove('open'); }
+
+// ── Stats ──
+function renderStats() {
+  const d=new Date();
+  const wStart=new Date(d); wStart.setDate(d.getDate()-d.getDay()); wStart.setHours(0,0,0,0);
+  const dayLabels=['日','一','二','三','四','五','六'];
+  let dots='';
+  for(let i=0;i<7;i++){
+    const day=new Date(wStart); day.setDate(wStart.getDate()+i);
+    const ds=`${day.getFullYear()}/${pad(day.getMonth()+1)}/${pad(day.getDate())}`;
+    const has=entries.some(e=>e.date===ds);
+    const isT=ds===today();
+    const isPeriod=periodDays.includes(ds);
+    dots+=`<div class="week-day">
+      <div class="wd-dot ${has?'has':''} ${isT?'is-today':''} ${isPeriod?'period':''}">${has?(isPeriod?'🩸':'✓'):''}</div>
+      <div class="wd-label">${dayLabels[i]}</div>
+    </div>`;
+  }
+  const wEntries=entries.filter(e=>{
+    const [y,m,day]=e.date.split('/').map(Number);
+    return new Date(y,m-1,day)>=wStart;
+  });
+  // Meal bars
+  const mc={};
+  wEntries.forEach(e=>{mc[e.meal]=(mc[e.meal]||0)+1;});
+  const max=Math.max(...Object.values(mc),1);
+  const order=['早餐','午餐','晚餐','高蛋白','點心','飲料'];
+  const bars=order.filter(m=>mc[m]).map(m=>`
+    <div class="bar-row">
+      <div class="bar-lbl">${m}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${mc[m]/max*100}%"></div></div>
+      <div class="bar-val">${mc[m]}</div>
+    </div>
+  `).join('');
+  // Motive stats
+  const motives={'餓了':0,'嘴饞':0,'社交':0,'習慣':0,'壓力':0};
+  wEntries.forEach(e=>{if(e.motivation&&motives[e.motivation]!==undefined)motives[e.motivation]++;});
+  const hasMotives=Object.values(motives).some(v=>v>0);
+  const motiveStat=hasMotives?`<div class="motive-stats">
+    ${Object.entries(motives).filter(([,v])=>v>0).map(([k,v])=>`
+      <div class="motive-stat"><div class="ms-num">${v}</div><div class="ms-label">${k}</div></div>
+    `).join('')}
+  </div>`:'<div style="color:var(--muted);font-size:13px">本週還沒有填寫進食動機</div>';
+  // Satiety avg
+  const satEntries=wEntries.filter(e=>e.satiety);
+  const satAvg=satEntries.length?Math.round(satEntries.reduce((s,e)=>s+e.satiety,0)/satEntries.length*10)/10:null;
+  // Water this week
+  let totalWater=0;
+  for(let i=0;i<7;i++){
+    const day=new Date(wStart); day.setDate(wStart.getDate()+i);
+    const ds=`${day.getFullYear()}/${pad(day.getMonth()+1)}/${pad(day.getDate())}`;
+    totalWater+=waterLog[ds]||0;
+  }
+  const streak=calcStreak();
+  document.getElementById('stats-content').innerHTML=`
+    <div class="stats-section">
+      <div class="ss-title">本週打卡 ${wEntries.length>0?'🔥':''}</div>
+      <div class="week-row" style="margin-bottom:0">${dots}</div>
+    </div>
+    <div class="stats-section">
+      <div class="ss-title">餐別分布（本週）</div>
+      ${bars||'<div style="color:var(--muted);font-size:13px">本週還沒有記錄</div>'}
+    </div>
+    ${satAvg?`<div class="stats-section">
+      <div class="ss-title">平均飽足感</div>
+      <div style="font-size:32px">${SAT_EMOJI[Math.round(satAvg)]}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px">${satAvg} / 5（${satEntries.length} 筆有記錄）</div>
+    </div>`:''}
+    <div class="stats-section">
+      <div class="ss-title">進食動機分析</div>
+      ${motiveStat}
+    </div>
+    <div class="stats-section">
+      <div class="ss-title">本週喝水 💧</div>
+      <div style="font-size:32px;font-weight:700;color:var(--teal)">${totalWater}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">杯 · 目標 ${7*8} 杯/週</div>
+    </div>
+    <div class="stats-section">
+      <div class="ss-title">連續記錄天數 🗓️</div>
+      <div class="streak-num">${streak}</div>
+      <div class="streak-sub" style="margin-top:4px">${streak>0?'天，繼續保持！💪':'今天開始記，streak 從 1 開始！'}</div>
+    </div>
+  `;
+}
+function calcStreak() {
+  const dates=[...new Set(entries.map(e=>e.date))].sort().reverse();
+  if(dates.length===0) return 0;
+  let s=0; const d=new Date(); d.setHours(0,0,0,0);
+  for(let i=0;i<60;i++){
+    const ds=`${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}`;
+    if(dates.includes(ds)){s++;d.setDate(d.getDate()-1);}
+    else if(i===0){d.setDate(d.getDate()-1);}
+    else break;
+  }
+  return s;
+}
+
+// ── Export ──
+function exportData() {
+  if(entries.length===0){toast('還沒有記錄喔！');return;}
+  const g=entries.reduce((acc,e)=>{(acc[e.date]=acc[e.date]||[]).push(e);return acc;},{});
+  const dates=Object.keys(g).sort().reverse();
+  let txt='=== Vais 飲食日記 ===\n\n';
+  dates.forEach(date=>{
+    const isPeriod=periodDays.includes(date);
+    const water=waterLog[date]||0;
+    txt+=`📅 ${date}${isPeriod?' 🩸':''} ${water?`💧${water}杯`:''}\n`;
+    g[date].sort((a,b)=>a.time.localeCompare(b.time)).forEach(e=>{
+      txt+=`  ${e.icon} [${e.meal}] ${e.time} ${e.food}`;
+      if(e.satiety) txt+=` ${SAT_EMOJI[e.satiety]}`;
+      if(e.motivation) txt+=` (${e.motivation})`;
+      txt+='\n';
+    });
+    txt+='\n';
+  });
+  txt+=`匯出時間：${new Date().toLocaleString('zh-TW')}`;
+  navigator.clipboard.writeText(txt)
+    .then(()=>toast('已複製！貼給 Claude 存檔 ✓'))
+    .catch(()=>{prompt('複製以下內容：',txt);});
+}
+
+// ── Clear ──
+function clearData() {
+  if(!confirm('確定要刪除所有記錄嗎？')) return;
+  entries=[]; save(); renderToday(); toast('已清除');
+}
+
+renderToday();
+</script>
+</body>
+</html>
