@@ -107,6 +107,8 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
 .e-del:active { color: #FF6B6B; }
 .e-edit { background: none; border: none; color: #CCC; cursor: pointer; font-size: 15px; line-height: 1; padding: 0; }
 .e-edit:active { color: var(--primary); }
+.e-copy { background: none; border: none; color: #CCC; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+.e-copy:active { color: var(--teal); }
 
 .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
 .empty-state .ei { font-size: 44px; margin-bottom: 10px; }
@@ -514,6 +516,24 @@ async function updateNotion(entry) {
   } catch(e) { console.warn('Notion update failed', e); }
 }
 
+// ── Copy Entry ──
+function copyEntry(id) {
+  const src = entries.find(x=>x.id===id);
+  if (!src) return;
+  const newEntry = {
+    ...src,
+    id: Date.now(),
+    date: today(),
+    time: nowTime()
+  };
+  delete newEntry.notionId;
+  entries.push(newEntry);
+  save();
+  syncToNotion(newEntry);
+  renderToday();
+  toast(`📋 已複製「${src.food}」到今天`);
+}
+
 // ── Edit Entry ──
 let editingId = null, editMeal = '早餐', editIcon = '🌅', editSat = null, editMotive = null;
 function editEntry(id) {
@@ -758,6 +778,7 @@ function renderToday() {
       </div>
       <div class="e-right">
         <span class="e-time">${e.time}</span>
+        <button class="e-copy" onclick="copyEntry(${e.id})" title="複製到今天">📋</button>
         <button class="e-edit" onclick="editEntry(${e.id})">✏️</button>
         <button class="e-del" onclick="delEntry(${e.id})">×</button>
       </div>
