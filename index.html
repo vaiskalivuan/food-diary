@@ -168,6 +168,24 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
 .sr-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
 .sr-right { color: var(--muted); font-size: 16px; }
 .settings-note { padding: 8px 4px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.api-input-wrap { padding: 0 16px 14px; }
+.api-input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; background: var(--bg); color: var(--text); font-family: inherit; outline: none; }
+.api-input:focus { border-color: var(--primary); }
+.api-save-btn { margin-top: 8px; padding: 9px 18px; background: var(--primary); color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+/* Nutrition */
+.nutr-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.nutr-field { display: flex; flex-direction: column; gap: 3px; }
+.nutr-label { font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: 0.4px; }
+.nutr-input { width: 100%; padding: 8px 6px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; text-align: center; background: var(--bg); color: var(--text); font-family: inherit; outline: none; }
+.nutr-input:focus { border-color: var(--teal); background: white; }
+.scan-btn { width: 100%; padding: 10px; background: var(--teal-light); color: #007A63; border: 1.5px solid var(--teal); border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.scan-btn:active { opacity: 0.8; }
+.e-nutr { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.e-nutr-chip { font-size: 10px; background: var(--teal-light); color: #007A63; padding: 2px 6px; border-radius: 6px; font-weight: 600; }
+.nutr-summary { background: var(--teal-light); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; text-align: center; }
+.ns-val { font-size: 18px; font-weight: 700; color: #007A63; }
+.ns-lbl { font-size: 10px; color: var(--muted); margin-top: 1px; }
 
 /* Modal */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 300; }
@@ -201,6 +219,7 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
   </div>
 
   <div id="stats-row" class="stats-row"></div>
+  <div id="nutr-summary" class="nutr-summary" style="display:none"></div>
 
   <!-- Water tracker -->
   <div class="water-card">
@@ -255,6 +274,17 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
         <button class="motive-btn" data-motive="習慣" onclick="selMotive(this)">🔄 習慣</button>
         <button class="motive-btn" data-motive="壓力" onclick="selMotive(this)">😮‍💨 壓力</button>
       </div>
+      <div class="detail-label" style="margin-top:10px">營養資訊（選填）</div>
+      <button class="scan-btn" onclick="document.getElementById('scanInput').click()">
+        📷 拍營養標示，自動填入
+        <input type="file" id="scanInput" accept="image/*" capture="environment" style="display:none" onchange="handleScan(event)">
+      </button>
+      <div class="nutr-row">
+        <div class="nutr-field"><div class="nutr-label">熱量 kcal</div><input class="nutr-input" id="n_cal" type="number" placeholder="0"></div>
+        <div class="nutr-field"><div class="nutr-label">蛋白質 g</div><input class="nutr-input" id="n_pro" type="number" placeholder="0"></div>
+        <div class="nutr-field"><div class="nutr-label">碳水 g</div><input class="nutr-input" id="n_carb" type="number" placeholder="0"></div>
+        <div class="nutr-field"><div class="nutr-label">脂肪 g</div><input class="nutr-input" id="n_fat" type="number" placeholder="0"></div>
+      </div>
     </div>
 
     <button class="add-btn" onclick="addEntry()">記錄下來 ✓</button>
@@ -287,6 +317,16 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
 <!-- SETTINGS -->
 <div id="tab-settings" class="tab-page">
   <div class="page-header"><h1>設定</h1></div>
+  <div class="settings-group">
+    <div class="settings-row" style="cursor:default">
+      <div class="sr-icon">🤖</div>
+      <div class="sr-info"><div class="sr-title">Claude API Key</div><div class="sr-sub">掃描營養標示用，不會上傳雲端</div></div>
+    </div>
+    <div class="api-input-wrap">
+      <input class="api-input" type="password" id="s_apiKey" placeholder="sk-ant-api03-...">
+      <button class="api-save-btn" onclick="saveApiKey()">儲存</button>
+    </div>
+  </div>
   <div class="settings-group">
     <div class="settings-row" onclick="exportData()">
       <div class="sr-icon">📋</div>
@@ -345,11 +385,13 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
 const KEY = 'vais-food-diary-v1';
 const WATER_KEY = 'vais-water-v1';
 const PERIOD_KEY = 'vais-period-v1';
+const APIKEY_KEY = 'vais-apikey-v1';
 
 // ── State ──
 let entries = [];
 let waterLog = {};   // { 'YYYY/MM/DD': n }
 let periodDays = []; // ['YYYY/MM/DD', ...]
+let apiKey = '';
 let curMeal = '早餐', curIcon = '🌅';
 let curSat = null, curMotive = null;
 let detailOpen = false;
@@ -360,10 +402,16 @@ function load() {
   try { entries = JSON.parse(localStorage.getItem(KEY)) || []; } catch(e) { entries = []; }
   try { waterLog = JSON.parse(localStorage.getItem(WATER_KEY)) || {}; } catch(e) { waterLog = {}; }
   try { periodDays = JSON.parse(localStorage.getItem(PERIOD_KEY)) || []; } catch(e) { periodDays = []; }
+  apiKey = localStorage.getItem(APIKEY_KEY) || '';
 }
 function save() { localStorage.setItem(KEY, JSON.stringify(entries)); }
 function saveWater() { localStorage.setItem(WATER_KEY, JSON.stringify(waterLog)); }
 function savePeriod() { localStorage.setItem(PERIOD_KEY, JSON.stringify(periodDays)); }
+function saveApiKey() {
+  apiKey = document.getElementById('s_apiKey').value.trim();
+  localStorage.setItem(APIKEY_KEY, apiKey);
+  toast('API Key 已儲存 ✓');
+}
 load();
 
 // ── Utils ──
@@ -407,6 +455,7 @@ function switchTab(name,btn) {
   if(name==='today') renderToday();
   if(name==='history'){initCal();renderHistoryList();}
   if(name==='stats') renderStats();
+  if(name==='settings') document.getElementById('s_apiKey').value=apiKey;
 }
 
 // ── Meal / Sat / Motive ──
@@ -467,10 +516,15 @@ function addEntry() {
   const inp=document.getElementById('foodInput');
   const food=inp.value.trim();
   if(!food){inp.focus();return;}
+  const cal=parseFloat(document.getElementById('n_cal').value)||null;
+  const pro=parseFloat(document.getElementById('n_pro').value)||null;
+  const carb=parseFloat(document.getElementById('n_carb').value)||null;
+  const fat=parseFloat(document.getElementById('n_fat').value)||null;
   entries.push({
     id:Date.now(), date:today(), time:nowTime(),
     meal:curMeal, icon:curIcon, food,
-    satiety:curSat||null, motivation:curMotive||null
+    satiety:curSat||null, motivation:curMotive||null,
+    cal, pro, carb, fat
   });
   save();
   inp.value='';
@@ -478,6 +532,7 @@ function addEntry() {
   // Reset optional fields
   curSat=null; curMotive=null;
   document.querySelectorAll('.sat-btn,.motive-btn').forEach(b=>b.classList.remove('on'));
+  ['n_cal','n_pro','n_carb','n_fat'].forEach(id=>document.getElementById(id).value='');
   renderToday();
   toast('記錄成功 ✓');
 }
@@ -499,6 +554,19 @@ function renderToday() {
     <div class="stat-card"><div class="snum">${entries.length}</div><div class="slabel">總筆數</div></div>
     <div class="stat-card"><div class="snum">${allDays}</div><div class="slabel">記錄天數</div></div>
   `;
+  // 今日營養加總
+  const hasNutr=td.some(e=>e.cal||e.pro||e.carb||e.fat);
+  const nutrEl=document.getElementById('nutr-summary');
+  if(hasNutr){
+    const sum=(key)=>td.reduce((s,e)=>s+(e[key]||0),0);
+    nutrEl.innerHTML=`
+      <div><div class="ns-val">${Math.round(sum('cal'))}</div><div class="ns-lbl">熱量 kcal</div></div>
+      <div><div class="ns-val">${Math.round(sum('pro'))}</div><div class="ns-lbl">蛋白質 g</div></div>
+      <div><div class="ns-val">${Math.round(sum('carb'))}</div><div class="ns-lbl">碳水 g</div></div>
+      <div><div class="ns-val">${Math.round(sum('fat'))}</div><div class="ns-lbl">脂肪 g</div></div>
+    `;
+    nutrEl.style.display='grid';
+  } else { nutrEl.style.display='none'; }
   const list=document.getElementById('today-list');
   if(td.length===0){
     list.innerHTML=`<div class="empty-state"><div class="ei">🍽️</div><p>今天還沒有記錄<br>吃了什麼快記下來！</p></div>`;
@@ -517,6 +585,12 @@ function renderToday() {
         ${(e.satiety||e.motivation)?`<div class="e-meta">
           ${e.satiety?`<span class="e-sat">${SAT_EMOJI[e.satiety]}</span>`:''}
           ${e.motivation?`<span class="e-motive">${e.motivation}</span>`:''}
+        </div>`:''}
+        ${(e.cal||e.pro||e.carb||e.fat)?`<div class="e-nutr">
+          ${e.cal?`<span class="e-nutr-chip">🔥${e.cal}kcal</span>`:''}
+          ${e.pro?`<span class="e-nutr-chip">💪${e.pro}g</span>`:''}
+          ${e.carb?`<span class="e-nutr-chip">🌾${e.carb}g</span>`:''}
+          ${e.fat?`<span class="e-nutr-chip">🥑${e.fat}g</span>`:''}
         </div>`:''}
       </div>
       <div class="e-right">
@@ -690,6 +764,56 @@ function calcStreak() {
     else break;
   }
   return s;
+}
+
+// ── Scan Nutrition ──
+async function handleScan(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (!apiKey) { toast('⚠️ 請先到設定填入 API Key'); return; }
+  toast('🔍 辨識中…');
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const b64 = e.target.result.split(',')[1];
+    try {
+      const nutr = await claudeOCR(b64, file.type);
+      if (nutr.cal)  document.getElementById('n_cal').value  = nutr.cal;
+      if (nutr.pro)  document.getElementById('n_pro').value  = nutr.pro;
+      if (nutr.carb) document.getElementById('n_carb').value = nutr.carb;
+      if (nutr.fat)  document.getElementById('n_fat').value  = nutr.fat;
+      // 確保 detail section 開著
+      if (!detailOpen) toggleDetail();
+      toast('✓ 辨識完成，請確認數字');
+    } catch(err) { toast('辨識失敗，請手動輸入'); }
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+async function claudeOCR(b64, mime) {
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5',
+      max_tokens: 256,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } },
+          { type: 'text', text: '這是食品營養標示。請只回傳 JSON，格式：{"cal":數字,"pro":數字,"carb":數字,"fat":數字}，單位分別是 kcal、g、g、g。如果看不到某項就填 null。不要回傳其他文字。' }
+        ]
+      }]
+    })
+  });
+  const data = await resp.json();
+  const text = data.content[0].text.trim();
+  return JSON.parse(text.match(/\{.*\}/s)[0]);
 }
 
 // ── Export ──
