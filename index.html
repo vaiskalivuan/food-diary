@@ -339,6 +339,20 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
       <div class="sr-info"><div class="sr-title">匯出日記</div><div class="sr-sub">複製所有記錄，貼給 Claude 存檔</div></div>
       <div class="sr-right">›</div>
     </div>
+    <div class="settings-row" onclick="exportJSON()">
+      <div class="sr-icon">📤</div>
+      <div class="sr-info"><div class="sr-title">匯出 JSON（搬移資料用）</div><div class="sr-sub">複製原始資料，可貼到另一個裝置或主畫面 app</div></div>
+      <div class="sr-right">›</div>
+    </div>
+    <div class="settings-row" style="cursor:default">
+      <div class="sr-icon">📥</div>
+      <div class="sr-info">
+        <div class="sr-title">匯入 JSON</div>
+        <div class="sr-sub">貼上從 Safari 複製的 JSON 資料</div>
+        <textarea id="import-json-input" placeholder="把 JSON 貼在這裡…" style="width:100%;margin-top:8px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:var(--bg);min-height:60px;resize:vertical;outline:none"></textarea>
+        <button class="api-save-btn" style="margin-top:6px" onclick="importJSON()">匯入</button>
+      </div>
+    </div>
     <div class="settings-row" onclick="clearData()">
       <div class="sr-icon">🗑️</div>
       <div class="sr-info"><div class="sr-title">清除所有資料</div><div class="sr-sub" style="color:#FF6B6B">刪除全部記錄，不可復原</div></div>
@@ -1030,6 +1044,34 @@ function exportData() {
   navigator.clipboard.writeText(txt)
     .then(()=>toast('已複製！貼給 Claude 存檔 ✓'))
     .catch(()=>{prompt('複製以下內容：',txt);});
+}
+
+// ── JSON Export / Import ──
+function exportJSON() {
+  const data = {
+    entries: entries,
+    waterLog: waterLog,
+    periodDays: periodDays
+  };
+  const json = JSON.stringify(data);
+  navigator.clipboard.writeText(json)
+    .then(() => toast('✓ 已複製！去主畫面 app 貼上匯入'))
+    .catch(() => { prompt('複製這段 JSON：', json); });
+}
+function importJSON() {
+  const raw = document.getElementById('import-json-input').value.trim();
+  if (!raw) { toast('請先貼上 JSON'); return; }
+  try {
+    const data = JSON.parse(raw);
+    if (data.entries) { entries = data.entries; save(); }
+    if (data.waterLog) { waterLog = data.waterLog; saveWater(); }
+    if (data.periodDays) { periodDays = data.periodDays; savePeriod(); }
+    document.getElementById('import-json-input').value = '';
+    renderToday();
+    toast(`✓ 匯入成功！共 ${entries.length} 筆記錄`);
+  } catch(e) {
+    toast('格式錯誤，請重新複製 JSON');
+  }
 }
 
 // ── Clear ──
