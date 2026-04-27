@@ -207,7 +207,7 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
     <div class="water-left">
       <div class="water-title">💧 今日喝水</div>
       <div class="water-glasses" id="water-glasses"></div>
-      <div class="water-sub" id="water-sub">目標 8 杯（約 2000ml）</div>
+      <div class="water-sub" id="water-sub">目標 10 杯（約 2000ml）</div>
     </div>
     <div class="water-btns">
       <button class="wbtn plus" onclick="addWater()">＋</button>
@@ -436,11 +436,11 @@ function removeWater() {
   const t=today(); if((waterLog[t]||0)>0){waterLog[t]--;saveWater();} renderWater();
 }
 function renderWater() {
-  const n=waterLog[today()]||0, goal=8;
+  const n=waterLog[today()]||0, goal=10;
   let html='';
   for(let i=0;i<goal;i++) html+=`<div class="glass${i<n?' filled':''}" onclick="${i<n?'removeWater()':'addWater()'}"></div>`;
   document.getElementById('water-glasses').innerHTML=html;
-  const sub=n===0?'目標 8 杯（約 2000ml）':n<goal?`還差 ${goal-n} 杯 加油！`:'🎉 今天達標了！';
+  const sub=n===0?'目標 10 杯（約 2000ml）':n<goal?`還差 ${goal-n} 杯 加油！`:'🎉 今天達標了！';
   document.getElementById('water-sub').textContent=sub;
 }
 
@@ -670,7 +670,7 @@ function renderStats() {
     <div class="stats-section">
       <div class="ss-title">本週喝水 💧</div>
       <div style="font-size:32px;font-weight:700;color:var(--teal)">${totalWater}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">杯 · 目標 ${7*8} 杯/週</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">杯 · 目標 ${7*10} 杯/週</div>
     </div>
     <div class="stats-section">
       <div class="ss-title">連續記錄天數 🗓️</div>
