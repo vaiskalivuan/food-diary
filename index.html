@@ -340,10 +340,14 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
     </div>
   </div>
   <div class="settings-group">
-    <div class="settings-row">
+    <div class="settings-row" style="cursor:default">
       <div class="sr-icon">🔗</div>
-      <div class="sr-info"><div class="sr-title">Notion 同步</div><div class="sr-sub">尚未設定（coming soon）</div></div>
-      <div class="sr-right">›</div>
+      <div class="sr-info"><div class="sr-title">Notion 同步</div><div class="sr-sub">記錄後自動同步到 Notion 飲食日記</div></div>
+      <div id="notion-status" style="font-size:11px;color:var(--teal);font-weight:700"></div>
+    </div>
+    <div class="api-input-wrap">
+      <input class="api-input" type="password" id="s_notionToken" placeholder="ntn_... 或 secret_...">
+      <button class="api-save-btn" onclick="saveNotionToken()">儲存</button>
     </div>
   </div>
   <div class="settings-note">
@@ -386,12 +390,15 @@ const KEY = 'vais-food-diary-v1';
 const WATER_KEY = 'vais-water-v1';
 const PERIOD_KEY = 'vais-period-v1';
 const APIKEY_KEY = 'vais-apikey-v1';
+const NOTION_KEY = 'vais-notion-token-v1';
+const NOTION_DB = '34f63e0a-ae87-8148-945d-c96b4d4c0dab';
 
 // ── State ──
 let entries = [];
 let waterLog = {};   // { 'YYYY/MM/DD': n }
 let periodDays = []; // ['YYYY/MM/DD', ...]
 let apiKey = '';
+let notionToken = '';
 let curMeal = '早餐', curIcon = '🌅';
 let curSat = null, curMotive = null;
 let detailOpen = false;
@@ -403,6 +410,7 @@ function load() {
   try { waterLog = JSON.parse(localStorage.getItem(WATER_KEY)) || {}; } catch(e) { waterLog = {}; }
   try { periodDays = JSON.parse(localStorage.getItem(PERIOD_KEY)) || []; } catch(e) { periodDays = []; }
   apiKey = localStorage.getItem(APIKEY_KEY) || '';
+  notionToken = localStorage.getItem(NOTION_KEY) || '';
 }
 function save() { localStorage.setItem(KEY, JSON.stringify(entries)); }
 function saveWater() { localStorage.setItem(WATER_KEY, JSON.stringify(waterLog)); }
@@ -411,6 +419,42 @@ function saveApiKey() {
   apiKey = document.getElementById('s_apiKey').value.trim();
   localStorage.setItem(APIKEY_KEY, apiKey);
   toast('API Key 已儲存 ✓');
+}
+function saveNotionToken() {
+  notionToken = document.getElementById('s_notionToken').value.trim();
+  localStorage.setItem(NOTION_KEY, notionToken);
+  document.getElementById('notion-status').textContent=notionToken?'✓ 已連接':'';
+  toast('Notion Token 已儲存 ✓');
+}
+async function syncToNotion(entry) {
+  if (!notionToken) return;
+  const SAT_MAP={1:'😐 還好',2:'🙂 有點飽',3:'😊 剛剛好',4:'😄 很飽',5:'🤤 超飽'};
+  const MOT_MAP={餓了:'🍽️ 餓了',嘴饞:'😋 嘴饞',社交:'👥 社交',習慣:'🔄 習慣',壓力:'😮‍💨 壓力'};
+  const props = {
+    '食物': {title:[{text:{content:entry.food}}]},
+    '日期': {date:{start:entry.date.replace(/\//g,'-')}},
+    '餐別': {select:{name:entry.meal}},
+    '時間': {rich_text:[{text:{content:entry.time}}]},
+    '生理期': {checkbox: periodDays.includes(entry.date)},
+    '喝水 杯': {number: waterLog[entry.date]||0}
+  };
+  if(entry.cal)  props['熱量 kcal']={number:entry.cal};
+  if(entry.pro)  props['蛋白質 g']={number:entry.pro};
+  if(entry.carb) props['碳水 g']={number:entry.carb};
+  if(entry.fat)  props['脂肪 g']={number:entry.fat};
+  if(entry.satiety) props['飽足感']={select:{name:SAT_MAP[entry.satiety]}};
+  if(entry.motivation) props['進食動機']={select:{name:MOT_MAP[entry.motivation]}};
+  try {
+    await fetch('https://api.notion.com/v1/pages', {
+      method:'POST',
+      headers:{
+        'Authorization':'Bearer '+notionToken,
+        'Notion-Version':'2022-06-28',
+        'Content-Type':'application/json'
+      },
+      body: JSON.stringify({parent:{database_id:NOTION_DB}, properties:props})
+    });
+  } catch(e) { console.warn('Notion sync failed', e); }
 }
 load();
 
@@ -455,7 +499,11 @@ function switchTab(name,btn) {
   if(name==='today') renderToday();
   if(name==='history'){initCal();renderHistoryList();}
   if(name==='stats') renderStats();
-  if(name==='settings') document.getElementById('s_apiKey').value=apiKey;
+  if(name==='settings'){
+    document.getElementById('s_apiKey').value=apiKey;
+    document.getElementById('s_notionToken').value=notionToken;
+    document.getElementById('notion-status').textContent=notionToken?'✓ 已連接':'';
+  }
 }
 
 // ── Meal / Sat / Motive ──
@@ -520,13 +568,15 @@ function addEntry() {
   const pro=parseFloat(document.getElementById('n_pro').value)||null;
   const carb=parseFloat(document.getElementById('n_carb').value)||null;
   const fat=parseFloat(document.getElementById('n_fat').value)||null;
-  entries.push({
+  const entry={
     id:Date.now(), date:today(), time:nowTime(),
     meal:curMeal, icon:curIcon, food,
     satiety:curSat||null, motivation:curMotive||null,
     cal, pro, carb, fat
-  });
+  };
+  entries.push(entry);
   save();
+  syncToNotion(entry);
   inp.value='';
   inp.focus();
   // Reset optional fields
