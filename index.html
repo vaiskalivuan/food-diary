@@ -105,10 +105,12 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
 .e-time { font-size: 11px; color: #CCC; }
 .e-del { background: none; border: none; color: #DDD; cursor: pointer; font-size: 20px; line-height: 1; padding: 0; }
 .e-del:active { color: #FF6B6B; }
-.e-edit { background: none; border: none; color: #CCC; cursor: pointer; font-size: 15px; line-height: 1; padding: 0; }
-.e-edit:active { color: var(--primary); }
-.e-copy { background: none; border: none; color: #CCC; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+.e-copy { background: none; border: none; color: #CCC; cursor: pointer; font-size: 16px; line-height: 1; padding: 4px; }
 .e-copy:active { color: var(--teal); }
+.entry-item { cursor: pointer; }
+.entry-item:active { opacity: 0.85; }
+.edit-del-btn { width: 100%; padding: 13px; background: none; color: #FF6B6B; border: 2px solid #FF6B6B; border-radius: var(--radius); font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 10px; transition: all 0.15s; }
+.edit-del-btn:active { background: #FF6B6B; color: white; }
 
 .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
 .empty-state .ei { font-size: 44px; margin-bottom: 10px; }
@@ -399,6 +401,7 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
       <div class="nutr-field"><div class="nutr-label">脂肪 g</div><input class="nutr-input" id="edit-fat" type="number" placeholder="0"></div>
     </div>
     <button class="add-btn" onclick="saveEdit()">儲存 ✓</button>
+    <button class="edit-del-btn" onclick="delFromEdit()">🗑️ 刪除這筆記錄</button>
   </div>
 </div>
 
@@ -724,6 +727,12 @@ function addEntry() {
 function delEntry(id) {
   entries=entries.filter(e=>e.id!==id); save(); renderToday(); toast('已刪除');
 }
+function delFromEdit() {
+  if (!editingId) return;
+  if (!confirm('確定刪除這筆記錄？')) return;
+  delEntry(editingId);
+  closeEditModal();
+}
 
 // ── Render Today ──
 function renderToday() {
@@ -757,7 +766,7 @@ function renderToday() {
   }
   const isPeriod=periodDays.includes(t);
   list.innerHTML=td.map(e=>`
-    <div class="entry-item">
+    <div class="entry-item" onclick="editEntry(${e.id})">
       <div class="e-icon">${e.icon}</div>
       <div class="e-content">
         <div class="e-top">
@@ -776,11 +785,9 @@ function renderToday() {
           ${e.fat?`<span class="e-nutr-chip">🥑${e.fat}g</span>`:''}
         </div>`:''}
       </div>
-      <div class="e-right">
+      <div class="e-right" onclick="event.stopPropagation()">
         <span class="e-time">${e.time}</span>
-        <button class="e-copy" onclick="copyEntry(${e.id})" title="複製到今天">📋</button>
-        <button class="e-edit" onclick="editEntry(${e.id})">✏️</button>
-        <button class="e-del" onclick="delEntry(${e.id})">×</button>
+        <button class="e-copy" onclick="copyEntry(${e.id})">📋</button>
       </div>
     </div>
   `).join('');
