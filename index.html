@@ -430,6 +430,14 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
     <div class="modal-handle"></div>
     <div class="modal-title" id="modal-title"></div>
     <div id="modal-period-note" class="modal-period-note" style="display:none">🩸 生理期期間</div>
+    <div id="modal-water-row" style="display:flex;align-items:center;gap:12px;background:var(--teal-light);border-radius:12px;padding:10px 14px;margin-bottom:12px">
+      <span style="font-size:18px">💧</span>
+      <span style="font-size:13px;font-weight:700;flex:1">喝水</span>
+      <button onclick="adjustModalWater(-1)" style="width:30px;height:30px;border-radius:8px;border:1.5px solid var(--teal);background:white;font-size:16px;cursor:pointer;color:#007A63;font-weight:700">－</button>
+      <span id="modal-water-count" style="font-size:18px;font-weight:700;color:#007A63;min-width:24px;text-align:center"></span>
+      <span style="font-size:12px;color:var(--muted)">杯</span>
+      <button onclick="adjustModalWater(1)" style="width:30px;height:30px;border-radius:8px;border:1.5px solid var(--teal);background:var(--teal);font-size:16px;cursor:pointer;color:white;font-weight:700">＋</button>
+    </div>
     <div id="modal-entries"></div>
   <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:12px">點任一筆可編輯</p>
   </div>
@@ -886,8 +894,10 @@ function renderHistoryList() {
 // ── Day Modal ──
 function openDay(date) {
   const es=entries.filter(e=>e.date===date).sort((a,b)=>a.time.localeCompare(b.time));
-  if(es.length===0) return;
+  if(es.length===0 && !waterLog[date]) return;
+  modalDate = date;
   document.getElementById('modal-title').textContent=`${fmtDate(date)} 的飲食`;
+  document.getElementById('modal-water-count').textContent = waterLog[date]||0;
   const pNote=document.getElementById('modal-period-note');
   pNote.style.display=periodDays.includes(date)?'block':'none';
   document.getElementById('modal-entries').innerHTML=es.map(e=>`
@@ -908,7 +918,18 @@ function openDay(date) {
   `).join('');
   document.getElementById('dayModal').classList.add('open');
 }
-function closeModal() { document.getElementById('dayModal').classList.remove('open'); }
+let modalDate = null;
+function closeModal() { document.getElementById('dayModal').classList.remove('open'); modalDate=null; }
+function adjustModalWater(delta) {
+  if (!modalDate) return;
+  const cur = waterLog[modalDate]||0;
+  const next = Math.max(0, cur+delta);
+  waterLog[modalDate] = next;
+  saveWater();
+  document.getElementById('modal-water-count').textContent = next;
+  if (modalDate===today()) renderWater();
+  if (document.getElementById('tab-history').classList.contains('active')) renderHistoryList();
+}
 
 // ── Stats ──
 function renderStats() {
