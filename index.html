@@ -249,6 +249,11 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
 
   <!-- Entry form -->
   <div class="entry-card">
+    <div id="entry-date-row" style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:12px;color:var(--muted);font-weight:700">記錄到</span>
+      <input type="date" id="entry-date" style="border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit;outline:none;flex:1" onchange="updateEntryDateLabel()">
+      <span id="entry-date-label" style="font-size:12px;color:var(--primary);font-weight:700"></span>
+    </div>
     <div class="meal-tabs">
       <button class="meal-tab on" data-meal="早餐" data-icon="🌅" onclick="selMeal(this)">🌅 早餐</button>
       <button class="meal-tab" data-meal="午餐" data-icon="☀️" onclick="selMeal(this)">☀️ 午餐</button>
@@ -426,6 +431,7 @@ body { font-family: -apple-system,'PingFang TC','Noto Sans TC',sans-serif; backg
     <div class="modal-title" id="modal-title"></div>
     <div id="modal-period-note" class="modal-period-note" style="display:none">🩸 生理期期間</div>
     <div id="modal-entries"></div>
+  <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:12px">點任一筆可編輯</p>
   </div>
 </div>
 
@@ -604,6 +610,9 @@ function saveEdit() {
   updateNotion(e);
   closeEditModal();
   renderToday();
+  if(document.getElementById('tab-history').classList.contains('active')){
+    renderHistoryList(); renderCal();
+  }
   toast('已更新 ✓');
 }
 load();
@@ -638,7 +647,26 @@ const SAT_EMOJI = {1:'😐',2:'🙂',3:'😊',4:'😄',5:'🤤'};
   document.getElementById('greeting').textContent=`${g} Vais 🥗`;
   const d=new Date(), days=['日','一','二','三','四','五','六'];
   document.getElementById('today-label').textContent=`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 週${days[d.getDay()]}`;
+  // 初始化日期選擇器為今天
+  const t=today();
+  const iso=t.replace(/\//g,'-');
+  document.getElementById('entry-date').value=iso;
+  document.getElementById('entry-date-label').textContent='今天';
 })();
+
+function updateEntryDateLabel() {
+  const val=document.getElementById('entry-date').value;
+  if(!val) return;
+  const [y,m,d]=val.split('-');
+  const ds=`${y}/${m}/${d}`;
+  document.getElementById('entry-date-label').textContent=fmtDate(ds);
+}
+function getEntryDate() {
+  const val=document.getElementById('entry-date').value;
+  if(!val) return today();
+  const [y,m,d]=val.split('-');
+  return `${y}/${m}/${d}`;
+}
 
 // ── Tab Switch ──
 function switchTab(name,btn) {
@@ -719,7 +747,7 @@ function addEntry() {
   const carb=parseFloat(document.getElementById('n_carb').value)||null;
   const fat=parseFloat(document.getElementById('n_fat').value)||null;
   const entry={
-    id:Date.now(), date:today(), time:nowTime(),
+    id:Date.now(), date:getEntryDate(), time:nowTime(),
     meal:curMeal, icon:curIcon, food,
     satiety:curSat||null, motivation:curMotive||null,
     cal, pro, carb, fat
@@ -863,12 +891,18 @@ function openDay(date) {
   const pNote=document.getElementById('modal-period-note');
   pNote.style.display=periodDays.includes(date)?'block':'none';
   document.getElementById('modal-entries').innerHTML=es.map(e=>`
-    <div class="modal-entry">
+    <div class="modal-entry" onclick="closeModal();editEntry(${e.id})" style="cursor:pointer">
       <div class="me-top"><span class="me-icon">${e.icon}</span><span class="me-meal">${e.meal} · ${e.time}</span></div>
       <div class="me-food">${e.food}</div>
       ${(e.satiety||e.motivation)?`<div class="me-details">
         ${e.satiety?`<span class="me-sat">${SAT_EMOJI[e.satiety]}</span>`:''}
         ${e.motivation?`<span class="me-motive">${e.motivation}</span>`:''}
+      </div>`:''}
+      ${(e.cal||e.pro||e.carb||e.fat)?`<div class="me-details" style="margin-top:4px">
+        ${e.cal?`<span class="me-motive">🔥${e.cal}kcal</span>`:''}
+        ${e.pro?`<span class="me-motive">💪${e.pro}g</span>`:''}
+        ${e.carb?`<span class="me-motive">🌾${e.carb}g</span>`:''}
+        ${e.fat?`<span class="me-motive">🥑${e.fat}g</span>`:''}
       </div>`:''}
     </div>
   `).join('');
